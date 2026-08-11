@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 
 // Change this if your backend runs somewhere else
-const API_BASE = 'http://localhost:8080/api/movies'
+// const API_BASE = 'http://localhost:8080/api/movies'
+const API_BASE = "https://movieswatchlist-m3a1.onrender.com/api/movies";
 
 const TABS = [
   { key: 'ALL', label: 'All' },
