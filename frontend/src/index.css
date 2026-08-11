@@ -70,11 +70,23 @@ input:focus-visible,
   padding: 56px 24px 96px;
 }
 
+@media (max-width: 640px) {
+  .page {
+    padding: 36px 16px 64px;
+  }
+}
+
 /* ---------- Hero / marquee ---------- */
 
 .hero {
   text-align: center;
   margin-bottom: 48px;
+}
+
+@media (max-width: 640px) {
+  .hero {
+    margin-bottom: 32px;
+  }
 }
 
 .hero-eyebrow {
@@ -107,8 +119,16 @@ input:focus-visible,
 .marquee-lights {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 26px;
+  padding: 0 12px;
+}
+
+@media (max-width: 640px) {
+  .marquee-lights span:nth-child(n+9) {
+    display: none;
+  }
 }
 
 .marquee-lights span {
@@ -143,6 +163,12 @@ input:focus-visible,
   position: relative;
 }
 
+@media (max-width: 640px) {
+  .booth {
+    padding: 22px 18px;
+  }
+}
+
 .booth::before {
   content: 'BOX OFFICE';
   position: absolute;
@@ -168,6 +194,19 @@ input:focus-visible,
     grid-template-columns: 1fr 1fr;
   }
   .booth-submit { grid-column: 1 / -1; }
+}
+
+@media (max-width: 480px) {
+  .booth-form {
+    grid-template-columns: 1fr;
+  }
+  .fav-toggle {
+    padding-bottom: 4px;
+    justify-content: flex-start;
+  }
+  .btn-primary.booth-submit {
+    width: 100%;
+  }
 }
 
 .field {
@@ -305,7 +344,15 @@ input:focus-visible,
   border-radius: 7px;
   cursor: pointer;
   white-space: nowrap;
+  flex: 1;
   transition: background 0.15s ease, color 0.15s ease;
+}
+
+@media (max-width: 480px) {
+  .reel-tab {
+    padding: 10px 8px;
+    font-size: 11px;
+  }
 }
 
 .reel-tab:hover {
@@ -333,6 +380,12 @@ input:focus-visible,
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
   gap: 20px;
+}
+
+@media (max-width: 340px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---------- Ticket card ---------- */
