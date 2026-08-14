@@ -14,6 +14,9 @@ public class Movie {
     @NotBlank(message = "Title cannot be empty")
     private String title;
 
+    @ManyToOne
+    private User owner;
+
     private String genre;
 
     @Enumerated(EnumType.STRING)
@@ -59,5 +62,13 @@ public class Movie {
 
     public void setFavorite(boolean favorite) {
         this.favorite = favorite;
+    }
+
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        this.owner = owner;
     }
 }

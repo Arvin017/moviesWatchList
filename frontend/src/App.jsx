@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
+import AuthScreen from './AuthScreen.jsx'
 
-// Change this if your backend runs somewhere else
-// const API_BASE = 'http://localhost:8080/api/movies'
-const API_BASE = "https://movieswatchlist-m3a1.onrender.com/api/movies";
+// Change this to your deployed Render backend URL when you deploy
+const API_BASE = 'https://movieswatchlist-m3a1.onrender.com/api/movies'
+const AUTH_BASE = 'https://movieswatchlist-m3a1.onrender.com/auth'
 
 const TABS = [
   { key: 'ALL', label: 'All' },
@@ -18,6 +19,13 @@ function urlForTab(tab) {
 }
 
 export default function App() {
+  // --- Auth state ---
+  const [token, setToken] = useState(() => localStorage.getItem('watchlist_token'))
+  const [username, setUsername] = useState(() => localStorage.getItem('watchlist_username'))
+  const [authError, setAuthError] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
+
+  // --- Movie state ---
   const [movies, setMovies] = useState([])
   const [activeTab, setActiveTab] = useState('ALL')
   const [loading, setLoading] = useState(true)
@@ -30,30 +38,112 @@ export default function App() {
   const [titleError, setTitleError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const loadMovies = useCallback(async (tab) => {
-    setLoading(true)
-    setError('')
-    try {
-      const res = await fetch(urlForTab(tab))
-      if (!res.ok) throw new Error('Request failed')
-      const data = await res.json()
-      setMovies(data)
-    } catch (err) {
-      setError(
-        "Can't reach the server. Make sure your Spring Boot backend is running on localhost:8080."
-      )
-      setMovies([])
-    } finally {
-      setLoading(false)
-    }
+  const authHeader = useCallback(
+    () => (token ? { Authorization: `Bearer ${token}` } : {}),
+    [token]
+  )
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('watchlist_token')
+    localStorage.removeItem('watchlist_username')
+    setToken(null)
+    setUsername(null)
+    setMovies([])
   }, [])
 
-  useEffect(() => {
-    loadMovies(activeTab)
-  }, [activeTab, loadMovies])
+  // Handle expired/invalid tokens on any fetch
+  const authedFetch = useCallback(
+    async (url, options = {}) => {
+      const res = await fetch(url, {
+        ...options,
+        headers: { ...(options.headers || {}), ...authHeader() },
+      })
+      if (res.status === 401 || res.status === 403) {
+        logout()
+        throw new Error('Session expired. Please sign in again.')
+      }
+      return res
+    },
+    [authHeader, logout]
+  )
 
-  const setBusy = (id, val) =>
-    setBusyIds((prev) => ({ ...prev, [id]: val }))
+  const loadMovies = useCallback(
+    async (tab) => {
+      if (!token) return
+      setLoading(true)
+      setError('')
+      try {
+        const res = await authedFetch(urlForTab(tab))
+        if (!res.ok) throw new Error('Request failed')
+        const data = await res.json()
+        setMovies(data)
+      } catch (err) {
+        setError(
+          err.message === 'Session expired. Please sign in again.'
+            ? err.message
+            : "Can't reach the server. Make sure your backend is running."
+        )
+        setMovies([])
+      } finally {
+        setLoading(false)
+      }
+    },
+    [token, authedFetch]
+  )
+
+  useEffect(() => {
+    if (token) loadMovies(activeTab)
+  }, [activeTab, token, loadMovies])
+
+  // --- Auth handlers ---
+  const handleLogin = async (user, pass) => {
+    setAuthBusy(true)
+    setAuthError('')
+    try {
+      const res = await fetch(`${AUTH_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password: pass }),
+      })
+      if (!res.ok) {
+        setAuthError('Wrong username or password.')
+        return
+      }
+      const newToken = await res.text()
+      localStorage.setItem('watchlist_token', newToken)
+      localStorage.setItem('watchlist_username', user)
+      setToken(newToken)
+      setUsername(user)
+    } catch (err) {
+      setAuthError("Can't reach the server. Make sure your backend is running.")
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  const handleRegister = async (user, pass) => {
+    setAuthBusy(true)
+    setAuthError('')
+    try {
+      const res = await fetch(`${AUTH_BASE}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password: pass }),
+      })
+      if (!res.ok) {
+        setAuthError('That username is already taken.')
+        return
+      }
+      // Auto login right after successful registration
+      await handleLogin(user, pass)
+    } catch (err) {
+      setAuthError("Can't reach the server. Make sure your backend is running.")
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  const setBusy = (id, val) => setBusyIds((prev) => ({ ...prev, [id]: val }))
 
   const handleAdd = async (e) => {
     e.preventDefault()
@@ -65,7 +155,7 @@ export default function App() {
     setSubmitting(true)
     setError('')
     try {
-      const res = await fetch(API_BASE, {
+      const res = await authedFetch(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: title.trim(), genre: genre.trim(), favorite }),
@@ -90,7 +180,7 @@ export default function App() {
     setBusy(id, true)
     setError('')
     try {
-      const res = await fetch(`${API_BASE}/${id}/watched`, { method: 'PUT' })
+      const res = await authedFetch(`${API_BASE}/${id}/watched`, { method: 'PUT' })
       if (!res.ok) throw new Error('Request failed')
       await loadMovies(activeTab)
     } catch (err) {
@@ -104,7 +194,7 @@ export default function App() {
     setBusy(id, true)
     setError('')
     try {
-      const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' })
+      const res = await authedFetch(`${API_BASE}/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Request failed')
       setMovies((prev) => prev.filter((m) => m.id !== id))
     } catch (err) {
@@ -114,15 +204,29 @@ export default function App() {
     }
   }
 
-  const counts = {
-    ALL: null,
-    PENDING: null,
-    WATCHED: null,
-    FAVORITES: null,
+  // --- Not logged in: show auth screen ---
+  if (!token) {
+    return (
+      <AuthScreen
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        authError={authError}
+        authBusy={authBusy}
+      />
+    )
   }
 
   return (
     <div className="page">
+      <div className="topbar">
+        <span className="topbar-user">
+          Signed in as <strong>{username}</strong>
+        </span>
+        <button className="logout-btn" onClick={logout}>
+          Sign out
+        </button>
+      </div>
+
       <header className="hero">
         <div className="hero-eyebrow">Personal Screening List</div>
         <h1 className="hero-title">Your Watchlist</h1>
