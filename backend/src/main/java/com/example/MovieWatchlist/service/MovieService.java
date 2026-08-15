@@ -3,6 +3,8 @@ package com.example.MovieWatchlist.service;
 import com.example.MovieWatchlist.entity.Movie;
 import com.example.MovieWatchlist.entity.User;
 import com.example.MovieWatchlist.enums.WatchStatus;
+import com.example.MovieWatchlist.exception.ResourceNotFoundException;
+import com.example.MovieWatchlist.exception.UnauthorizedActionException;
 import com.example.MovieWatchlist.repository.MovieRepository;
 import com.example.MovieWatchlist.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +25,7 @@ public class MovieService {
     private User getCurrentUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     public Movie addMovie(Movie movie) {
@@ -46,10 +48,10 @@ public class MovieService {
 
     public Movie markAsWatched(Long id) {
         Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Movie not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Movie not found"));
 
         if (movie.getOwner().getId() != getCurrentUser().getId()) {
-            throw new RuntimeException("You don't have permission to modify this movie");
+            throw new UnauthorizedActionException("You don't have permission to modify this movie");
         }
 
         movie.setStatus(WatchStatus.WATCHED);
@@ -58,10 +60,10 @@ public class MovieService {
 
     public void deleteMovie(Long id) {
         Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Movie not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Movie not found"));
 
         if (movie.getOwner().getId() != getCurrentUser().getId()) {
-            throw new RuntimeException("You don't have permission to delete this movie");
+            throw new UnauthorizedActionException("You don't have permission to delete this movie");
         }
 
         movieRepository.deleteById(id);
